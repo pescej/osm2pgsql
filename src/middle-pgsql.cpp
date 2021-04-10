@@ -623,7 +623,7 @@ void middle_pgsql_t::start()
     }
 }
 
-void middle_pgsql_t::stop(thread_pool_t &pool)
+void middle_pgsql_t::stop()
 {
     m_cache.reset();
     if (!m_options->flat_node_file.empty()) {
@@ -639,7 +639,7 @@ void middle_pgsql_t::stop(thread_pool_t &pool)
     } else if (!m_options->append) {
         // Building the indexes takes time, so do it asynchronously.
         for (auto &table : m_tables) {
-            table.task_set(pool.submit(
+            table.task_set(m_thread_pool->submit(
                 std::bind(&middle_pgsql_t::table_desc::build_index, &table,
                           m_options->database_options.conninfo())));
         }
@@ -780,8 +780,9 @@ static bool check_bucket_index(pg_conn_t *db_connection,
     return res.num_tuples() > 0;
 }
 
-middle_pgsql_t::middle_pgsql_t(options_t const *options)
-: m_options(options),
+middle_pgsql_t::middle_pgsql_t(options_t const *options,
+                               thread_pool_t *thread_pool)
+: middle_t(thread_pool), m_options(options),
   m_cache(new node_ram_cache{options->alloc_chunkwise | ALLOC_LOSSY,
                              options->cache}),
   m_db_connection(m_options->database_options.conninfo()),

@@ -40,7 +40,9 @@ inline void parse_file(options_t const &options,
                        std::shared_ptr<output_t> const &output,
                        char const *filename = nullptr, bool do_stop = true)
 {
-    osmdata_t osmdata{std::move(dependency_manager), mid, output, options};
+    thread_pool_t thread_pool{1U};
+    osmdata_t osmdata{std::move(dependency_manager), mid, output, &thread_pool,
+                      options};
 
     osmdata.start();
 
@@ -136,12 +138,15 @@ public:
     {
         options.database_options = m_db.db_options();
 
+        thread_pool_t thread_pool{1U};
         std::shared_ptr<middle_t> middle;
 
         if (options.slim) {
-            middle = std::shared_ptr<middle_t>(new middle_pgsql_t{&options});
+            middle = std::shared_ptr<middle_t>(
+                new middle_pgsql_t{&options, &thread_pool});
         } else {
-            middle = std::shared_ptr<middle_t>(new middle_ram_t{&options});
+            middle = std::shared_ptr<middle_t>(
+                new middle_ram_t{&options, &thread_pool});
         }
         middle->start();
 
@@ -156,7 +161,7 @@ public:
                 : new dependency_manager_t{});
 
         osmdata_t osmdata{std::move(dependency_manager), middle, output,
-                          options};
+                          &thread_pool, options};
 
         osmdata.start();
 
@@ -179,7 +184,8 @@ public:
     {
         options.database_options = m_db.db_options();
 
-        auto middle = std::make_shared<middle_ram_t>(&options);
+        thread_pool_t thread_pool{1U};
+        auto middle = std::make_shared<middle_ram_t>(&options, &thread_pool);
         middle->start();
 
         auto output =

@@ -26,10 +26,11 @@
 
 #include "dependency-manager.hpp"
 #include "osmtypes.hpp"
+#include "thread-pool.hpp"
 
+class middle_t;
 class options_t;
 class output_t;
-struct middle_t;
 
 /**
  * This class guides the processing of the OSM data through its multiple
@@ -41,7 +42,7 @@ class osmdata_t : public osmium::handler::Handler
 public:
     osmdata_t(std::unique_ptr<dependency_manager_t> dependency_manager,
               std::shared_ptr<middle_t> mid, std::shared_ptr<output_t> output,
-              options_t const &options);
+              thread_pool_t *thread_pool, options_t const &options);
 
     void start() const;
 
@@ -57,7 +58,7 @@ public:
      * Rest of the processing (stages 1b, 1c, 2, and database postprocessing).
      * This is called once after the input files are processed.
      */
-    void stop() const;
+    void stop();
 
 private:
     void node_add(osmium::Node const &node) const;
@@ -86,11 +87,12 @@ private:
     /**
      * Run postprocessing on database: Clustering and index creation.
      */
-    void postprocess_database() const;
+    void postprocess_database();
 
     std::unique_ptr<dependency_manager_t> m_dependency_manager;
     std::shared_ptr<middle_t> m_mid;
     std::shared_ptr<output_t> m_output;
+    thread_pool_t *m_thread_pool;
 
     std::string m_conninfo;
 
@@ -101,7 +103,6 @@ private:
     int m_num_procs;
     bool m_append;
     bool m_droptemp;
-    bool m_parallel_indexing;
     bool m_with_extra_attrs;
     bool m_with_forward_dependencies;
 };

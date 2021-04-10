@@ -121,9 +121,11 @@ TEMPLATE_TEST_CASE("middle import", "", options_slim_default,
         conn.exec("CREATE SCHEMA IF NOT EXISTS osm;");
     }
 
-    auto mid = options.slim
-                   ? std::shared_ptr<middle_t>(new middle_pgsql_t{&options})
-                   : std::shared_ptr<middle_t>(new middle_ram_t{&options});
+    thread_pool_t thread_pool{1U};
+    auto mid = options.slim ? std::shared_ptr<middle_t>(
+                                  new middle_pgsql_t{&options, &thread_pool})
+                            : std::shared_ptr<middle_t>(
+                                  new middle_ram_t{&options, &thread_pool});
 
     mid->start();
 
@@ -291,6 +293,8 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
                    options_slim_default, options_slim_dense_cache,
                    options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     testing::cleanup::file_t flatnode_cleaner{options.flat_node_file};
@@ -312,7 +316,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
     // and add some nodes. Does this in its own scope so that the mid is
     // closed properly.
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
 
         mid->start();
 
@@ -330,7 +334,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
 
     SECTION("Added nodes are there and no others")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         check_node(mid, node10);
@@ -342,7 +346,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
     SECTION("Delete existing and non-existing node")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->node(node5d);
@@ -358,7 +362,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_node(mid, 5));
@@ -371,7 +375,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
     SECTION("Change (delete and set) existing and non-existing node")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->node(node10d);
@@ -387,7 +391,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             check_node(mid, node10a);
@@ -399,7 +403,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
     SECTION("Add new node")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->node(node12);
@@ -414,7 +418,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update node", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_node(mid, 5));
@@ -484,6 +488,8 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
                    options_slim_default, options_slim_dense_cache,
                    options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     testing::cleanup::file_t flatnode_cleaner{options.flat_node_file};
@@ -509,7 +515,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
     // add some ways. Does this in its own scope so that the mid is closed
     // properly.
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         mid->way(way20);
@@ -526,7 +532,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
 
     SECTION("Added ways are there and no others")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         REQUIRE(no_way(mid, 5));
@@ -538,7 +544,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
     SECTION("Delete existing and non-existing way")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->way(way5d);
@@ -554,7 +560,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_way(mid, 5));
@@ -567,7 +573,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
     SECTION("Change (delete and set) existing and non-existing way")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->way(way20d);
@@ -585,7 +591,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_way(mid, 5));
@@ -599,7 +605,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
     SECTION("Add new way")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->way(way22);
@@ -614,7 +620,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_way(mid, 5));
@@ -629,6 +635,8 @@ TEMPLATE_TEST_CASE("middle: add, delete and update way", "",
 TEMPLATE_TEST_CASE("middle: add way with attributes", "", options_slim_default,
                    options_slim_dense_cache, options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     SECTION("With attributes") { options.extra_attributes = true; }
@@ -657,7 +665,7 @@ TEMPLATE_TEST_CASE("middle: add way with attributes", "", options_slim_default,
         "osm_version=123,osm_timestamp=2009-02-13T23:31:30Z,osm_changeset=456");
 
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         mid->way(way20);
@@ -672,7 +680,7 @@ TEMPLATE_TEST_CASE("middle: add way with attributes", "", options_slim_default,
     options.append = true;
 
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         check_way(mid,
@@ -714,6 +722,8 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
                    options_slim_default, options_slim_dense_cache,
                    options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     testing::cleanup::file_t flatnode_cleaner{options.flat_node_file};
@@ -739,7 +749,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
     // add some relations. Does this in its own scope so that the mid is closed
     // properly.
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         mid->relation(relation30);
@@ -755,7 +765,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
 
     SECTION("Added relations are there and no others")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         REQUIRE(no_relation(mid, 5));
@@ -767,7 +777,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
     SECTION("Delete existing and non-existing relation")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->relation(relation5d);
@@ -782,7 +792,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_relation(mid, 5));
@@ -795,7 +805,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
     SECTION("Change (delete and set) existing and non-existing relation")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->relation(relation30d);
@@ -812,7 +822,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_relation(mid, 5));
@@ -826,7 +836,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
     SECTION("Add new relation")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->relation(relation32);
@@ -840,7 +850,7 @@ TEMPLATE_TEST_CASE("middle: add, delete and update relation", "",
         }
         {
             // Check with a new mid.
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             REQUIRE(no_relation(mid, 5));
@@ -856,6 +866,8 @@ TEMPLATE_TEST_CASE("middle: add relation with attributes", "",
                    options_slim_default, options_slim_dense_cache,
                    options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     SECTION("With attributes") { options.extra_attributes = true; }
@@ -881,7 +893,7 @@ TEMPLATE_TEST_CASE("middle: add relation with attributes", "",
         "osm_version=123,osm_timestamp=2009-02-13T23:31:30Z,osm_changeset=456");
 
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         mid->relation(relation30);
@@ -895,7 +907,7 @@ TEMPLATE_TEST_CASE("middle: add relation with attributes", "",
     options.append = true;
 
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         check_relation(mid, options.extra_attributes ? relation30_attr_tags
@@ -906,6 +918,8 @@ TEMPLATE_TEST_CASE("middle: add relation with attributes", "",
 TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
                    options_slim_dense_cache, options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     testing::cleanup::file_t flatnode_cleaner{options.flat_node_file};
@@ -930,7 +944,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
     // add some nodes and ways. Does this in its own scope so that the mid is
     // closed properly.
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         full_dependency_manager_t dependency_manager{mid};
         mid->start();
 
@@ -959,7 +973,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
 
     SECTION("Single way affected")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         full_dependency_manager_t dependency_manager{mid};
         mid->start();
 
@@ -979,7 +993,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
     SECTION("Two ways affected")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->way(way22);
@@ -988,7 +1002,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
             check_way(mid, way22);
         }
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             full_dependency_manager_t dependency_manager{mid};
             mid->start();
 
@@ -1011,7 +1025,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
     SECTION("Change way so the changing node isn't in it any more")
     {
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             mid->start();
 
             mid->way(way20d);
@@ -1024,7 +1038,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
         }
 
         {
-            auto mid = std::make_shared<middle_pgsql_t>(&options);
+            auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
             full_dependency_manager_t dependency_manager{mid};
             mid->start();
 
@@ -1041,6 +1055,8 @@ TEMPLATE_TEST_CASE("middle: change nodes in way", "", options_slim_default,
 TEMPLATE_TEST_CASE("middle: change nodes in relation", "", options_slim_default,
                    options_slim_dense_cache, options_flat_node_cache)
 {
+    thread_pool_t thread_pool{1U};
+
     options_t options = TestType::options(db);
 
     testing::cleanup::file_t flatnode_cleaner{options.flat_node_file};
@@ -1065,7 +1081,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in relation", "", options_slim_default,
     // add some nodes and ways. Does this in its own scope so that the mid is
     // closed properly.
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         mid->start();
 
         mid->node(node10);
@@ -1084,7 +1100,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in relation", "", options_slim_default,
 
     SECTION("Single relation directly affected")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         full_dependency_manager_t dependency_manager{mid};
         mid->start();
 
@@ -1103,7 +1119,7 @@ TEMPLATE_TEST_CASE("middle: change nodes in relation", "", options_slim_default,
 
     SECTION("Single relation indirectly affected (through way)")
     {
-        auto mid = std::make_shared<middle_pgsql_t>(&options);
+        auto mid = std::make_shared<middle_pgsql_t>(&options, &thread_pool);
         full_dependency_manager_t dependency_manager{mid};
         mid->start();
 

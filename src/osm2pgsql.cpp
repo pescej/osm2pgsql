@@ -29,7 +29,11 @@ static void run(options_t const &options)
     auto const files = prepare_input_files(
         options.input_files, options.input_format, options.append);
 
-    auto middle = create_middle(options);
+    thread_pool_t thread_pool{options.parallel_indexing ? options.num_procs
+                                                        : 1U};
+    log_debug("Started pool with {} threads.", thread_pool.num_threads());
+
+    auto middle = create_middle(options, &thread_pool);
     middle->start();
 
     auto output =
@@ -42,7 +46,8 @@ static void run(options_t const &options)
             ? new full_dependency_manager_t{middle}
             : new dependency_manager_t{});
 
-    osmdata_t osmdata{std::move(dependency_manager), middle, output, options};
+    osmdata_t osmdata{std::move(dependency_manager), middle, output,
+                      &thread_pool, options};
 
     osmdata.start();
 

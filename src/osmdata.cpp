@@ -28,13 +28,13 @@
 
 osmdata_t::osmdata_t(std::unique_ptr<dependency_manager_t> dependency_manager,
                      std::shared_ptr<middle_t> mid,
-                     std::shared_ptr<output_t> output, options_t const &options)
+                     std::shared_ptr<output_t> output,
+                     thread_pool_t *thread_pool, options_t const &options)
 : m_dependency_manager(std::move(dependency_manager)), m_mid(std::move(mid)),
-  m_output(std::move(output)), m_conninfo(options.database_options.conninfo()),
-  m_bbox(options.bbox), m_num_procs(options.num_procs),
-  m_append(options.append), m_droptemp(options.droptemp),
-  m_parallel_indexing(options.parallel_indexing),
-  m_with_extra_attrs(options.extra_attributes),
+  m_output(std::move(output)), m_thread_pool(thread_pool),
+  m_conninfo(options.database_options.conninfo()), m_bbox(options.bbox),
+  m_num_procs(options.num_procs), m_append(options.append),
+  m_droptemp(options.droptemp), m_with_extra_attrs(options.extra_attributes),
   m_with_forward_dependencies(options.with_forward_dependencies)
 {
     assert(m_dependency_manager);
@@ -372,29 +372,22 @@ void osmdata_t::process_dependents() const
 
 void osmdata_t::reprocess_marked() const { m_output->reprocess_marked(); }
 
-void osmdata_t::postprocess_database() const
+void osmdata_t::postprocess_database()
 {
-    unsigned int const num_threads = m_parallel_indexing ? m_num_procs : 1U;
-    log_debug("Starting pool with {} threads.", num_threads);
-
-    // All the intensive parts of this are long-running PostgreSQL commands.
-    // They will be run in a thread pool.
-    thread_pool_t pool{num_threads};
-
     if (m_droptemp) {
         // When dropping middle tables, make sure they are gone before
         // indexing starts.
-        m_mid->stop(pool);
+        m_mid->stop();
     }
 
-    m_output->stop(&pool);
+    m_output->stop(m_thread_pool);
 
     if (!m_droptemp) {
         // When keeping middle tables, there is quite a large index created
         // which is better done after the output tables have been copied.
         // Note that --disable-parallel-indexing needs to be used to really
         // force the order.
-        m_mid->stop(pool);
+        m_mid->stop();
     }
 
     // Waiting here for pool to execute all tasks.
@@ -402,7 +395,7 @@ void osmdata_t::postprocess_database() const
     m_output->wait();
 }
 
-void osmdata_t::stop() const
+void osmdata_t::stop()
 {
     m_output->sync();
 

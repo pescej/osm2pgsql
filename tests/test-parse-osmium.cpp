@@ -24,10 +24,10 @@ struct type_stats_t
 
 struct counting_middle_t : public middle_t
 {
-    counting_middle_t(bool append) : m_append(append) {}
+    counting_middle_t(bool append) : middle_t(nullptr), m_append(append) {}
 
     void start() override {}
-    void stop(thread_pool_t &) override {}
+    void stop() override {}
     void cleanup() {}
 
     void node(osmium::Node const &node) override {
