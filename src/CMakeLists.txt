@@ -9,6 +9,7 @@ set(osm2pgsql_lib_SOURCES
   input.cpp
   logging.cpp
   middle.cpp
+  middle-db.cpp
   middle-pgsql.cpp
   middle-ram.cpp
   node-locations.cpp
@@ -32,6 +33,7 @@ set(osm2pgsql_lib_SOURCES
   tagtransform-c.cpp
   tagtransform.cpp
   thread-pool.cpp
+  template-repository.cpp
   util.cpp
   wildcmp.cpp
 )
